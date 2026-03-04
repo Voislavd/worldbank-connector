@@ -90,9 +90,8 @@ async function getDataTable(request: GetDataTableRequest) {
   const rows: DataTableRow[] = limitedData.map((row) => ({
     cells: [
       { type: "string" as const, value: row.year },
-      ...visibleIndicators.map((name, i) => {
-        const value = row[name] as number | null;
-        const code = visibleCodes[i] ?? "";
+      ...visibleCodes.map((code) => {
+        const value = row[code] as number | null;
         const fmt = getIndicatorFormat(code);
 
         const formatting =

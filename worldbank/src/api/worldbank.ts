@@ -54,6 +54,9 @@ export async function getCountries(): Promise<WBCountry[]> {
  * Fetches indicator data for a country, querying each indicator in
  * parallel and merging results into rows keyed by year.
  *
+ * Row values are keyed by indicator CODE (not the API's display name)
+ * so the caller can look them up reliably.
+ *
  * Returns rows sorted most-recent-year-first.
  */
 export async function fetchIndicatorData(
@@ -61,22 +64,24 @@ export async function fetchIndicatorData(
 ): Promise<IndicatorRow[]> {
   const { countryCode, indicatorCodes, dateRange } = params;
 
-  const fetches = indicatorCodes.map((code) =>
-    fetchSingleIndicator(countryCode, code, dateRange),
+  const results = await Promise.allSettled(
+    indicatorCodes.map((code) =>
+      fetchSingleIndicator(countryCode, code, dateRange),
+    ),
   );
-  const results = await Promise.all(fetches);
 
-  // Merge all indicators into a single map keyed by year
   const yearMap = new Map<string, IndicatorRow>();
 
-  for (const { indicatorName, points } of results) {
+  for (const result of results) {
+    if (result.status !== "fulfilled") continue;
+    const { indicatorCode, points } = result.value;
     for (const point of points) {
       let row = yearMap.get(point.date);
       if (!row) {
         row = { year: point.date };
         yearMap.set(point.date, row);
       }
-      row[indicatorName] = point.value;
+      row[indicatorCode] = point.value;
     }
   }
 
@@ -91,7 +96,7 @@ async function fetchSingleIndicator(
   countryCode: string,
   indicatorCode: string,
   dateRange?: { start: number; end: number },
-): Promise<{ indicatorName: string; points: WBDataPoint[] }> {
+): Promise<{ indicatorCode: string; points: WBDataPoint[] }> {
   const params = new URLSearchParams({
     format: "json",
     per_page: "1000",
@@ -110,8 +115,6 @@ async function fetchSingleIndicator(
 
   const data = await response.json();
   const points: WBDataPoint[] = data[1] ?? [];
-  const indicatorName =
-    points[0]?.indicator?.value ?? indicatorCode;
 
-  return { indicatorName, points };
+  return { indicatorCode, points };
 }
