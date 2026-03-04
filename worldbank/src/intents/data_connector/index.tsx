@@ -102,9 +102,12 @@ async function getDataTable(request: GetDataTableRequest) {
             ? getNumberFormat(fmt.format, fmt.decimals)
             : undefined;
 
+        const cellValue =
+          value != null && fmt.format === "percent" ? value / 100 : value;
+
         return {
           type: "number" as const,
-          value: value ?? undefined,
+          value: cellValue ?? undefined,
           ...(formatting ? { metadata: { formatting } } : {}),
         };
       }),
