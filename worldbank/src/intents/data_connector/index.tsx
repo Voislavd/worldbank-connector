@@ -58,8 +58,11 @@ async function getDataTable(request: GetDataTableRequest) {
       indicatorCodes: config.indicatorCodes,
       dateRange: config.dateRange,
     });
-  } catch {
-    return { status: "remote_request_failed" as const };
+  } catch (err) {
+    return {
+      status: "app_error" as const,
+      message: `Fetch failed: ${err instanceof Error ? err.message : String(err)}`,
+    };
   }
 
   if (!rawData.length) {

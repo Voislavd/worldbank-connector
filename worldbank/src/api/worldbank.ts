@@ -1,4 +1,4 @@
-const WB_BASE = "https://api.worldbank.org/v2";
+declare const BACKEND_HOST: string;
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -40,8 +40,7 @@ interface WBDataPoint {
  * filtering out aggregate/regional entries.
  */
 export async function getCountries(): Promise<WBCountry[]> {
-  const url = `${WB_BASE}/country?format=json&per_page=300`;
-  const response = await fetch(url);
+  const response = await fetch(`${BACKEND_HOST}/api/countries`);
   if (!response.ok) {
     throw new Error(`Failed to fetch countries: ${response.status}`);
   }
@@ -70,10 +69,26 @@ export async function fetchIndicatorData(
     ),
   );
 
+  // If every single request failed, throw with the first error so the
+  // caller can surface a meaningful message instead of "no data".
+  const fulfilled = results.filter(
+    (r): r is PromiseFulfilledResult<{ indicatorCode: string; points: WBDataPoint[] }> =>
+      r.status === "fulfilled",
+  );
+  if (fulfilled.length === 0) {
+    const firstRejection = results.find(
+      (r): r is PromiseRejectedResult => r.status === "rejected",
+    );
+    throw new Error(
+      firstRejection
+        ? `All indicator requests failed. First error: ${firstRejection.reason}`
+        : "All indicator requests failed with unknown errors.",
+    );
+  }
+
   const yearMap = new Map<string, IndicatorRow>();
 
-  for (const result of results) {
-    if (result.status !== "fulfilled") continue;
+  for (const result of fulfilled) {
     const { indicatorCode, points } = result.value;
     for (const point of points) {
       let row = yearMap.get(point.date);
@@ -97,15 +112,10 @@ async function fetchSingleIndicator(
   indicatorCode: string,
   dateRange?: { start: number; end: number },
 ): Promise<{ indicatorCode: string; points: WBDataPoint[] }> {
-  const params = new URLSearchParams({
-    format: "json",
-    per_page: "1000",
-  });
-  if (dateRange) {
-    params.set("date", `${dateRange.start}:${dateRange.end}`);
-  }
-
-  const url = `${WB_BASE}/country/${countryCode}/indicator/${indicatorCode}?${params}`;
+  const dateParam = dateRange
+    ? `?date=${dateRange.start}:${dateRange.end}`
+    : "";
+  const url = `${BACKEND_HOST}/api/indicator/${countryCode}/${indicatorCode}${dateParam}`;
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(

@@ -194,10 +194,16 @@ export function SelectionUI({
       });
 
       if (result.status !== "completed") {
-        setError("Failed to load data. Please try again.");
+        const msg =
+          "message" in result && result.message
+            ? result.message
+            : `Error: ${result.status}`;
+        setError(msg);
       }
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Something went wrong.",
+      );
     } finally {
       setIsLoading(false);
     }
