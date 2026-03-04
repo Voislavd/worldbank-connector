@@ -313,15 +313,11 @@ export function SelectionUI({
       {/* ─── DATA TAB: Curated Reports ─── */}
       {activeTab === "data" && (
         <Rows spacing="1.5u">
-          <TextInput
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Search from World Bank"
-          />
-
-          <Text variant="bold" size="small">
-            Reports
-          </Text>
+          <Box paddingTop="1u">
+            <Text variant="bold" size="medium">
+              Reports
+            </Text>
+          </Box>
 
           {filteredReports.map((report) => (
             <HorizontalCard
