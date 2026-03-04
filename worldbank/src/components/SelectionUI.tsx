@@ -1,23 +1,29 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Rows,
-  Columns,
   Select,
   FormField,
   Button,
   Text,
   Alert,
   TextInput,
-  InputPill,
   Box,
   SegmentedControl,
   HorizontalCard,
   ChartLineIcon,
+  PillsInput,
+  Scrollable,
 } from "@canva/app-ui-kit";
+import type { PillsInputItem } from "@canva/app-ui-kit";
 import type { RenderSelectionUiRequest } from "@canva/intents/data";
 
 import { getCountries } from "../api/worldbank";
-import { REPORTS, type Report, type IndicatorDef } from "../api/reports";
+import {
+  REPORTS,
+  INDICATOR_CATALOG,
+  type Report,
+  type IndicatorDef,
+} from "../api/reports";
 import type { WorldBankSourceConfig } from "../intents/data_connector";
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -52,6 +58,9 @@ export function SelectionUI({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [countriesLoading, setCountriesLoading] = useState(true);
+  const [indicatorSearch, setIndicatorSearch] = useState("");
+  const [showIndicatorDropdown, setShowIndicatorDropdown] = useState(false);
+  const blurTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // ─── Load countries on mount ────────────────────────────────────────
 
@@ -155,6 +164,55 @@ export function SelectionUI({
   const clearAllIndicators = useCallback(() => {
     setSelectedIndicators([]);
   }, []);
+
+  const addIndicator = useCallback((indicator: IndicatorDef) => {
+    setSelectedIndicators((prev) => {
+      if (prev.some((i) => i.code === indicator.code)) return prev;
+      return [...prev, indicator];
+    });
+    setIndicatorSearch("");
+  }, []);
+
+  const handlePillAdd = useCallback(
+    (value: string) => {
+      const q = value.toLowerCase().trim();
+      if (!q) return;
+      const allIndicators = INDICATOR_CATALOG.flatMap((c) => c.indicators);
+      const match = allIndicators.find(
+        (i) =>
+          i.label.toLowerCase() === q || i.code.toLowerCase() === q,
+      );
+      if (match) addIndicator(match);
+    },
+    [addIndicator],
+  );
+
+  const selectedCodes = useMemo(
+    () => new Set(selectedIndicators.map((i) => i.code)),
+    [selectedIndicators],
+  );
+
+  const pillsValue: PillsInputItem[] = useMemo(
+    () =>
+      selectedIndicators.map((ind) => ({
+        value: ind.label,
+        onRemoveClick: () => removeIndicator(ind.code),
+      })),
+    [selectedIndicators, removeIndicator],
+  );
+
+  const filteredCatalog = useMemo(() => {
+    const q = indicatorSearch.toLowerCase().trim();
+    if (!q) return INDICATOR_CATALOG;
+    return INDICATOR_CATALOG.map((cat) => ({
+      ...cat,
+      indicators: cat.indicators.filter(
+        (i) =>
+          i.label.toLowerCase().includes(q) ||
+          i.code.toLowerCase().includes(q),
+      ),
+    })).filter((cat) => cat.indicators.length > 0);
+  }, [indicatorSearch]);
 
   // ─── Country selection ──────────────────────────────────────────────
 
@@ -312,34 +370,96 @@ export function SelectionUI({
             )}
           />
 
-          <Rows spacing="1u">
-            <Columns spacing="1u" alignY="center">
-              <Text variant="bold" size="small">
-                Indicators
-              </Text>
-              {selectedIndicators.length > 0 && (
-                <Button variant="tertiary" onClick={clearAllIndicators}>
-                  Clear all
-                </Button>
+          <Rows spacing="0.5u">
+            <FormField
+              label="Indicators"
+              control={() => (
+                <PillsInput
+                  value={pillsValue}
+                  inputValue={indicatorSearch}
+                  onInputChange={setIndicatorSearch}
+                  placeholder="Select indicators"
+                  additionalPlaceholder="Add more..."
+                  ariaLabel="Select indicators"
+                  maxRows={4}
+                  onPillAdd={handlePillAdd}
+                  onLastPillRemove={() =>
+                    setSelectedIndicators((prev) => prev.slice(0, -1))
+                  }
+                  onClearClick={
+                    selectedIndicators.length > 0
+                      ? clearAllIndicators
+                      : undefined
+                  }
+                  onFocus={() => {
+                    clearTimeout(blurTimeout.current);
+                    setShowIndicatorDropdown(true);
+                  }}
+                  onBlur={() => {
+                    blurTimeout.current = setTimeout(
+                      () => setShowIndicatorDropdown(false),
+                      200,
+                    );
+                  }}
+                />
               )}
-            </Columns>
+            />
 
-            {selectedIndicators.length > 0 ? (
-              <Box padding="1u">
-                <Rows spacing="0.5u">
-                  {selectedIndicators.map((indicator) => (
-                    <InputPill
-                      key={indicator.code}
-                      text={indicator.label}
-                      onRemoveClick={() => removeIndicator(indicator.code)}
-                    />
-                  ))}
-                </Rows>
+            {showIndicatorDropdown && (
+              <Box
+                borderRadius="standard"
+                background="surface"
+                padding="1u"
+              >
+                <Scrollable>
+                  <div style={{ maxHeight: "200px" }}>
+                    <Rows spacing="0.5u">
+                      {filteredCatalog.map((cat) => (
+                        <Rows spacing="0" key={cat.name}>
+                          <Box paddingStart="1u" paddingTop="1u" paddingBottom="0.5u">
+                            <Text variant="bold" size="small" tone="tertiary">
+                              {cat.name}
+                            </Text>
+                          </Box>
+                          {cat.indicators.map((ind) => {
+                            const isSelected = selectedCodes.has(ind.code);
+                            return (
+                              <div
+                                key={ind.code}
+                                role="option"
+                                aria-selected={isSelected}
+                                style={{
+                                  padding: "6px 8px",
+                                  borderRadius: "4px",
+                                  cursor: isSelected ? "default" : "pointer",
+                                  opacity: isSelected ? 0.5 : 1,
+                                }}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  if (!isSelected) {
+                                    addIndicator(ind);
+                                  }
+                                }}
+                              >
+                                <Text size="small">
+                                  {ind.label}
+                                </Text>
+                              </div>
+                            );
+                          })}
+                        </Rows>
+                      ))}
+                      {filteredCatalog.length === 0 && (
+                        <Box padding="1u">
+                          <Text size="small" tone="tertiary">
+                            No indicators found
+                          </Text>
+                        </Box>
+                      )}
+                    </Rows>
+                  </div>
+                </Scrollable>
               </Box>
-            ) : (
-              <Text size="small" tone="tertiary">
-                Select a report from the Data tab or add indicators manually.
-              </Text>
             )}
           </Rows>
 
