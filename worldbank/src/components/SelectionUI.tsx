@@ -12,7 +12,10 @@ import {
   HorizontalCard,
   ChartLineIcon,
   PillsInput,
-  Scrollable,
+  Menu,
+  MenuItem,
+  MenuDivider,
+  CheckIcon,
 } from "@canva/app-ui-kit";
 import type { PillsInputItem } from "@canva/app-ui-kit";
 import type { RenderSelectionUiRequest } from "@canva/intents/data";
@@ -406,60 +409,42 @@ export function SelectionUI({
             />
 
             {showIndicatorDropdown && (
-              <Box
-                borderRadius="standard"
-                background="surface"
-                padding="1u"
+              <div
+                onMouseDown={(e) => e.preventDefault()}
+                style={{
+                  maxHeight: "240px",
+                  overflowY: "auto",
+                  borderRadius: "8px",
+                  boxShadow: "0 2px 12px rgba(0, 0, 0, 0.15)",
+                  border: "1px solid var(--ui-kit-color-border, rgba(0,0,0,0.1))",
+                  background: "var(--ui-kit-color-surface, #fff)",
+                }}
               >
-                <Scrollable>
-                  <div style={{ maxHeight: "200px" }}>
-                    <Rows spacing="0.5u">
-                      {filteredCatalog.map((cat) => (
-                        <Rows spacing="0" key={cat.name}>
-                          <Box paddingStart="1u" paddingTop="1u" paddingBottom="0.5u">
-                            <Text variant="bold" size="small" tone="tertiary">
-                              {cat.name}
-                            </Text>
-                          </Box>
-                          {cat.indicators.map((ind) => {
-                            const isSelected = selectedCodes.has(ind.code);
-                            return (
-                              <div
-                                key={ind.code}
-                                role="option"
-                                aria-selected={isSelected}
-                                style={{
-                                  padding: "6px 8px",
-                                  borderRadius: "4px",
-                                  cursor: isSelected ? "default" : "pointer",
-                                  opacity: isSelected ? 0.5 : 1,
-                                }}
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  if (!isSelected) {
-                                    addIndicator(ind);
-                                  }
-                                }}
-                              >
-                                <Text size="small">
-                                  {ind.label}
-                                </Text>
-                              </div>
-                            );
-                          })}
-                        </Rows>
-                      ))}
-                      {filteredCatalog.length === 0 && (
-                        <Box padding="1u">
-                          <Text size="small" tone="tertiary">
-                            No indicators found
-                          </Text>
-                        </Box>
-                      )}
-                    </Rows>
-                  </div>
-                </Scrollable>
-              </Box>
+                <Menu>
+                  {filteredCatalog.map((cat, catIdx) => (
+                    <span key={cat.name}>
+                      {catIdx > 0 && <MenuDivider />}
+                      <MenuItem disabled label={cat.name} />
+                      {cat.indicators.map((ind) => {
+                        const isSelected = selectedCodes.has(ind.code);
+                        return (
+                          <MenuItem
+                            key={ind.code}
+                            label={ind.label}
+                            onClick={() => {
+                              if (!isSelected) addIndicator(ind);
+                            }}
+                            end={isSelected ? () => <CheckIcon /> : undefined}
+                          />
+                        );
+                      })}
+                    </span>
+                  ))}
+                  {filteredCatalog.length === 0 && (
+                    <MenuItem disabled label="No indicators found" />
+                  )}
+                </Menu>
+              </div>
             )}
           </Rows>
 
