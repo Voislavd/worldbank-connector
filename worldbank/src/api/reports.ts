@@ -86,6 +86,24 @@ export const REPORTS: Report[] = [
       { code: "AG.LND.FRST.ZS", label: "Forest area (% of land)" },
     ],
   },
+  {
+    id: "global-trends",
+    name: "Global Trends",
+    description: "Population growth, urbanization, trade, and connectivity",
+    indicators: [
+      { code: "SP.POP.GROW", label: "Population growth (annual %)" },
+      { code: "SP.URB.TOTL.IN.ZS", label: "Urban population (% of total)" },
+      { code: "NE.TRD.GNFS.ZS", label: "Trade (% of GDP)" },
+      {
+        code: "BX.KLT.DINV.WD.GD.ZS",
+        label: "Foreign direct investment (% of GDP)",
+      },
+      {
+        code: "EG.ELC.ACCS.ZS",
+        label: "Access to electricity (% of population)",
+      },
+    ],
+  },
 ];
 
 // ─── Browsable Indicator Catalog ─────────────────────────────────────
