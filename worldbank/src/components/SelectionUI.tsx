@@ -232,6 +232,7 @@ export function SelectionUI({
   // ─── Render ─────────────────────────────────────────────────────────
 
   return (
+    <Box paddingTop="2u" paddingEnd="2u" paddingBottom="2u">
     <Rows spacing="1u">
       <SegmentedControl
         options={[
@@ -291,6 +292,7 @@ export function SelectionUI({
                 {...props}
                 options={dateRangeOptions}
                 onChange={setDateRange}
+                stretch
               />
             )}
           />
@@ -305,6 +307,7 @@ export function SelectionUI({
                 onChange={handleCountryChange}
                 placeholder="Select country"
                 disabled={countriesLoading}
+                stretch
               />
             )}
           />
@@ -352,5 +355,6 @@ export function SelectionUI({
         </Rows>
       )}
     </Rows>
+    </Box>
   );
 }
